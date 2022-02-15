@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -43,10 +44,27 @@ func SignUp() gin.HandlerFunc {
 			return
 		}
 
+		count, err := userCollection.CountDocuments(ctx, bson.M{"email": user.Email})
+
+		defer cancel()
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Info: map[string]interface{}{"info": err}})
+
+			return
+		}
+
+		if count > 0 {
+			c.JSON(http.StatusConflict, responses.Response{Status: http.StatusConflict, Info: map[string]interface{}{"info": "email exists."}})
+
+			return
+		}
+
+		var HashedPassword string = utils.HashPassword(user.Password)
 		newUser := models.User{
 			Id:       primitive.NewObjectID(),
 			Email:    user.Email,
-			Password: user.Password,
+			Password: HashedPassword,
 		}
 
 		result, err := userCollection.InsertOne(ctx, newUser)
