@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"go-auth-api/src/configs"
 	"go-auth-api/src/models"
 	"go-auth-api/src/responses"
@@ -76,6 +77,64 @@ func SignUp() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, responses.Response{Status: http.StatusCreated, Info: map[string]interface{}{"info": "User registered successfully."}})
+
+	}
+}
+
+func SignIn() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+		var user models.User
+		var foundUser models.User
+
+		defer cancel()
+
+		err := c.BindJSON(&user)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Info: map[string]interface{}{"info": err.Error()}})
+			return
+		}
+
+		validationErr := validate.Struct(&user)
+
+		if validationErr != nil {
+
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Info: map[string]interface{}{"info": utils.ValidatorErrorHandler(validationErr)}})
+			return
+		}
+
+		err = userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&foundUser)
+
+		defer cancel()
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Info: map[string]interface{}{"info": "invalid login credentials."}})
+			return
+		}
+
+		isValid, msg := utils.ComparePassword(foundUser.Password, user.Password)
+
+		defer cancel()
+
+		fmt.Println(msg)
+
+		if !isValid {
+			c.JSON(http.StatusBadRequest, responses.Response{Status: http.StatusBadRequest, Info: map[string]interface{}{"info": msg}})
+			return
+		}
+
+		token, err := utils.GenerateJWT(foundUser.Id.Hex())
+
+		if err != nil {
+			if !isValid {
+				c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Info: map[string]interface{}{"info": err.Error()}})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Info: map[string]interface{}{"info": gin.H{
+			"token": token,
+		}}})
 
 	}
 }

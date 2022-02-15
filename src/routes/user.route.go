@@ -8,4 +8,5 @@ import (
 
 func UserROute(router *gin.RouterGroup) {
 	router.POST("/register", controllers.SignUp())
+	router.POST("/login", controllers.SignIn())
 }
