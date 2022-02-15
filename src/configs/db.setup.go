@@ -35,3 +35,9 @@ func ConnectDB() *mongo.Client {
 
 	return client
 }
+
+func GetCollection(client *mongo.Client, collectionName string) *mongo.Collection {
+	collection := client.Database("go-auth-api").Collection(collectionName)
+
+	return collection
+}

@@ -16,5 +16,7 @@ func LoadEnv() {
 }
 
 func EnvMongoURI() string {
-	return os.Getenv("MONGOURI")
+	LoadEnv()
+	uri := os.Getenv("MONGOURI")
+	return uri
 }
