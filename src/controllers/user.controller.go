@@ -138,3 +138,31 @@ func SignIn() gin.HandlerFunc {
 
 	}
 }
+
+func GetUser() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+		_, _ = cancel, ctx
+
+		user_id := c.GetString("user_id")
+
+		var user models.User
+
+		defer cancel()
+
+		objid, _ := primitive.ObjectIDFromHex(user_id)
+
+		err := userCollection.FindOne(ctx, bson.M{"id": objid}).Decode(&user)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, responses.Response{Status: http.StatusInternalServerError, Info: map[string]interface{}{"info": "Error getting user."}})
+			return
+		}
+
+		c.JSON(http.StatusOK, responses.Response{Status: http.StatusOK, Info: map[string]interface{}{"info": gin.H{
+			"email":    user.Email,
+			"password": user.Password,
+		}}})
+	}
+}
